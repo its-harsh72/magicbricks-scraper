@@ -5,22 +5,13 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const query = searchParams.get("query");
 
-    if (!query) {
-      return NextResponse.json({ error: "Missing query" }, { status: 400 });
-    }
+    if (!query) return NextResponse.json({ error: "Missing query" }, { status: 400 });
 
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
       query
     )}`;
 
-    // Add User-Agent header to avoid Nominatim blocking on Vercel
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": "MagicBricks-Scraper-App - email@example.com",
-        "Accept-Language": "en",
-      },
-    });
-
+    const res = await fetch(url);
     const data = await res.json();
 
     if (!data || data.length === 0) {
@@ -32,7 +23,6 @@ export async function GET(req: Request) {
       lng: parseFloat(data[0].lon),
     });
   } catch (e) {
-    console.error("Geocode error", e);
     return NextResponse.json({ error: "Geocode error" }, { status: 500 });
   }
 }

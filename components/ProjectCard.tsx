@@ -15,6 +15,14 @@ export default function ProjectCard({ p }: { p: any }) {
 
       <p className="text-2xl font-bold text-indigo-600">{p.price}</p>
       <p className="mt-1 text-sm text-gray-600">By {p.builder}</p>
+
+      {/* NEW: Latitude + Longitude */}
+      {p.lat && p.lng && (
+        <div className="mt-3 text-sm text-gray-500">
+          <p>📌 Lat: {p.lat}</p>
+          <p>📌 Lng: {p.lng}</p>
+        </div>
+      )}
     </div>
   );
 }

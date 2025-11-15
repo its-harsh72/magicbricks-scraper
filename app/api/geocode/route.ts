@@ -29,27 +29,38 @@
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const query = searchParams.get("query");
+
+  if (!query) {
+    return NextResponse.json({ error: "Missing query parameter 'query'" }, { status: 400 });
+  }
+
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+    query
+  )}`;
+
   try {
-    const { searchParams } = new URL(req.url);
-    const query = searchParams.get("query");
-
-    if (!query) return NextResponse.json({ error: "Missing query" }, { status: 400 });
-
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-      query
-    )}`;
-
+    // IMPORTANT: Adding a User-Agent header to comply with Nominatim usage policy.
+    // Replace 'YourAppName v1.0 (contact@example.com)' with a unique identifier for your app.
     const res = await fetch(url, {
       headers: {
-        "User-Agent": "MyGeoApp/1.0 (your-email@example.com)", // REQUIRED
-        "Accept-Language": "en",
+        'User-Agent': 'VercelGeocodingApp/1.0 (contact@myproject.dev)',
       },
     });
 
+    // Explicitly handle non-OK (e.g., 403 Forbidden or 429 Too Many Requests) responses
     if (!res.ok) {
-      return NextResponse.json({ error: "Failed to fetch coordinates" }, { status: res.status });
+        const errorDetail = await res.text();
+        // Log the specific error status and response detail to Vercel logs
+        console.error(`Nominatim API returned non-OK status ${res.status}:`, errorDetail);
+        
+        return NextResponse.json(
+            { error: `External geocoding service error (Status ${res.status}). Possible rate limit or block.` }, 
+            { status: 502 } // 502 Bad Gateway is appropriate for a failed external service call
+        );
     }
-
+    
     const data = await res.json();
 
     if (!data || data.length === 0) {
@@ -60,7 +71,12 @@ export async function GET(req: Request) {
       lat: parseFloat(data[0].lat),
       lng: parseFloat(data[0].lon),
     });
+
   } catch (e) {
-    return NextResponse.json({ error: "Geocode error" }, { status: 500 });
+    // Log the uncaught exception (e.g., network error, DNS failure, timeout)
+    console.error("Geocoding API Route uncaught exception during fetch:", e); 
+    
+    // Return a generic error message instructing the user to check server logs
+    return NextResponse.json({ error: "Geocode error. Check Vercel logs for specific fetch error (e.g., timeout)." }, { status: 500 });
   }
 }
